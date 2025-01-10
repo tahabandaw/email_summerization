@@ -47,3 +47,110 @@ def fetch_emails(email, password, folder='INBOX', limit=10):
                 if not content:
                     content = 'No text content found'
             else:
+                content = msg.get_payload(decode=True).decode('utf-8', 'ignore') if msg.get_payload(decode=True) else 'No content found'
+            emails.append({
+                'id': uid,
+                'subject': msg.get('Subject', 'No Subject'),
+                'from': msg.get('From', 'Unknown'),
+                'content': content,
+                'date': msg.get('Date', 'Unknown'),
+            })
+        imap.logout()
+        return emails
+    except Exception as e:
+        logging.error(f"Error fetching emails: {e}")
+        return []
+
+def save_emails_to_json(emails, filename=EMAILS_JSON_FILE):
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(emails, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logging.error(f"Error saving emails to JSON: {e}")
+
+def load_emails_from_json(filename=EMAILS_JSON_FILE):
+    try:
+        if os.path.exists(filename):
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        logging.error(f"Error loading emails from JSON: {e}")
+        return []
+
+def categorize_email(subject):
+    subject_lower = subject.lower()
+    if any(keyword in subject_lower for keyword in ['invoice', 'payment', 'bill']):
+        return 'Finance'
+    elif any(keyword in subject_lower for keyword in ['meeting', 'schedule', 'project']):
+        return 'Work'
+    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion','logical']):
+        return 'Promotions'
+    else:
+        return 'Others'
+
+def summarize_text(text):
+    try:
+        if len(text.split()) < 10:
+            return text  # return the text as is if it's too short
+        max_len = min(130, len(text.split()) * 2)
+        summary = summarizer(text, max_length=max_len, min_length=30, do_sample=False)
+        return summary[0]['summary_text']
+    except Exception as e:
+        logging.error(f"Error summarizing text: {e}")
+        return "Unable to generate summary."
+
+def main():
+    st.title('\U0001F4E8 Email Dashboard')
+
+    # Sidebar for email and password input with fetch button
+    email = st.sidebar.text_input('\U0001F4E8 Email')
+    password = st.sidebar.text_input('\U0001F511 Password', type='password')
+    fetch_emails_button = st.sidebar.button('\U0001F4E5 Fetch Emails')
+
+    # Load emails from JSON at the start
+    if 'emails' not in st.session_state:
+        st.session_state.emails = load_emails_from_json()
+
+    if fetch_emails_button:
+        if email and password:
+            with st.spinner('Fetching emails...'):
+                try:
+                    st.session_state.emails = fetch_emails(email, password, limit=5)  # Adjust the limit here
+                    if not st.session_state.emails:
+                        st.error('No emails fetched. Please check your credentials or try again later.')
+                    else:
+                        save_emails_to_json(st.session_state.emails)  # Save fetched emails to JSON
+                except Exception as e:
+                    st.error(f"An error occurred while fetching emails: {e}")
+        else:
+            st.warning('Please enter your email and password to fetch emails.')
+
+    if st.session_state.emails:
+        # Email categories
+        categories = ['All', 'Finance', 'Work', 'Promotions', 'Others']
+        selected_category = st.radio("Filter Emails", categories, horizontal=True)
+
+        filtered_emails = st.session_state.emails if selected_category == 'All' else [
+            email for email in st.session_state.emails if email.get('category', 'Others') == selected_category]
+
+        for email in filtered_emails:
+            with st.container():
+                # Display email summary with a button to show full content
+                with st.expander(f"\U0001F4E7 Subject: {email['subject']}", expanded=False):
+                    st.markdown(f"""
+                    - **From:** {email['from']}
+                    - **Date:** {email['date']}
+                    - **Category:** {email.get('category', categorize_email(email['subject']))}
+                    - **Summary:** {email.get('summary', 'Not summarized yet.')}
+                    """, unsafe_allow_html=True)
+
+                    # Display full email content inside the expander
+                    st.text_area("Full Email Content", email['content'], height=300, disabled=True)
+
+                st.divider()  # For better visual separation
+    else:
+        st.write("No emails to display.")
+
+if __name__ == '__main__':
+    main()
