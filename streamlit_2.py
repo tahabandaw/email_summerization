@@ -83,10 +83,10 @@ def load_emails_from_json(filename=EMAILS_JSON_FILE):
 
 def categorize_email(subject):
     subject_lower = subject.lower()
-    if any(keyword in subject_lower for keyword in ['invoice', 'payment', 'bill']):
-        return 'Finance'
+    if any(keyword in subject_lower for keyword in ['Write Your Representative', 'Representative', 'Write']):
+        return 'Constituent'
     elif any(keyword in subject_lower for keyword in ['meeting', 'schedule', 'project']):
-        return 'Work'
+        return 'meeting request'
     elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion','logical']):
         return 'Promotions'
     else:
@@ -131,7 +131,7 @@ def main():
 
     if st.session_state.emails:
         # Email categories
-        categories = ['All', 'Finance', 'Work', 'Promotions', 'Others']
+        categories = ['All', 'Constituent', 'meeting request', 'Newsletter','Speakers office','Others']
         selected_category = st.radio("Filter Emails", categories, horizontal=True)
 
         filtered_emails = st.session_state.emails if selected_category == 'All' else [
