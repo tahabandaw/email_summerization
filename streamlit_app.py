@@ -5,7 +5,7 @@ import streamlit as st
 from email import message_from_bytes
 from transformers import pipeline
 import imapclient
-
+import sys
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
