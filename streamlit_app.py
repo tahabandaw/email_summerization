@@ -9,15 +9,15 @@ import json
 # Configure logging
 logging.basicConfig(filename='app.log', level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
-# Set environment variable to disable oneDNN
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '-1'
+# Disable TensorFlow optimizations and GPU features
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress unnecessary TensorFlow logs
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU usage entirely
 
 # Initialize the summarization pipeline
 summarizer = pipeline('summarization', model='facebook/bart-large-cnn')
 
 # File to store emails
 EMAILS_JSON_FILE = 'emails.json'
-
 
 def fetch_emails(email, password, folder='INBOX', limit=10):
     try:
@@ -54,14 +54,12 @@ def fetch_emails(email, password, folder='INBOX', limit=10):
         logging.error(f"Error fetching emails: {e}")
         return []
 
-
 def save_emails_to_json(emails, filename=EMAILS_JSON_FILE):
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(emails, f, ensure_ascii=False, indent=4)
     except Exception as e:
         logging.error(f"Error saving emails to JSON: {e}")
-
 
 def load_emails_from_json(filename=EMAILS_JSON_FILE):
     try:
@@ -73,18 +71,16 @@ def load_emails_from_json(filename=EMAILS_JSON_FILE):
         logging.error(f"Error loading emails from JSON: {e}")
         return []
 
-
 def categorize_email(subject):
     subject_lower = subject.lower()
     if any(keyword in subject_lower for keyword in ['invoice', 'payment', 'bill']):
         return 'Finance'
     elif any(keyword in subject_lower for keyword in ['meeting', 'schedule', 'project']):
         return 'Work'
-    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion','logical']):
+    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion']):
         return 'Promotions'
     else:
         return 'Others'
-
 
 def summarize_text(text):
     try:
@@ -108,17 +104,21 @@ def main():
 
     # Load emails from JSON at the start
     if 'emails' not in st.session_state:
-        st.session_state.emails = load_emails_from_json()
+        st.session_state.emails = []
 
     if fetch_emails_button:
         if email and password:
             with st.spinner('Fetching emails...'):
                 try:
-                    st.session_state.emails = fetch_emails(email, password)
-                    if not st.session_state.emails:
-                        st.error('No emails fetched. Please check your credentials or try again later.')
+                    fetched_emails = fetch_emails(email, password)
+                    if fetched_emails:
+                        for email in fetched_emails:
+                            email['category'] = categorize_email(email['subject'])
+                            email['summary'] = summarize_text(email['content'])
+                        st.session_state.emails = fetched_emails
+                        save_emails_to_json(fetched_emails)  # Save fetched emails to JSON
                     else:
-                        save_emails_to_json(st.session_state.emails)  # Save fetched emails to JSON
+                        st.error('No emails fetched. Please check your credentials or try again later.')
                 except Exception as e:
                     st.error(f"An error occurred while fetching emails: {e}")
         else:
@@ -139,8 +139,8 @@ def main():
                     st.markdown(f"""
                     - **From:** {email['from']}
                     - **Date:** {email['date']}
-                    - **Category:** {email.get('category', categorize_email(email['subject']))}
-                    - **Summary:** {email.get('summary', 'Not summarized yet.')}
+                    - **Category:** {email['category']}
+                    - **Summary:** {email['summary']}
                     """, unsafe_allow_html=True)
 
                     # Display full email content inside the expander
@@ -149,7 +149,6 @@ def main():
                 st.divider()  # For better visual separation
     else:
         st.write("No emails to display.")
-
 
 if __name__ == '__main__':
     main()
