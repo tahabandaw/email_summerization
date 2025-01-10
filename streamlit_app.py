@@ -1,5 +1,4 @@
 import re
-import os
 import logging
 import streamlit as st
 from email import message_from_bytes
@@ -7,6 +6,7 @@ from transformers import pipeline
 import imapclient
 import sys
 import torch
+
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -57,23 +57,6 @@ def fetch_emails(email, password, folder='INBOX', limit=10):
         logging.error(f"Error fetching emails: {e}")
         return []
 
-def save_emails_to_json(emails, filename=EMAILS_JSON_FILE):
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(emails, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        logging.error(f"Error saving emails to JSON: {e}")
-
-def load_emails_from_json(filename=EMAILS_JSON_FILE):
-    try:
-        if os.path.exists(filename):
-            with open(filename, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return []
-    except Exception as e:
-        logging.error(f"Error loading emails from JSON: {e}")
-        return []
-
 def categorize_email(subject):
     subject_lower = subject.lower()
     if any(keyword in subject_lower for keyword in ['invoice', 'payment', 'bill']):
@@ -105,7 +88,7 @@ def main():
     password = st.sidebar.text_input('\U0001F511 Password', type='password')
     fetch_emails_button = st.sidebar.button('\U0001F4E5 Fetch Emails')
 
-    # Load emails from JSON at the start
+    # Load emails in session state at the start
     if 'emails' not in st.session_state:
         st.session_state.emails = []
 
@@ -119,7 +102,6 @@ def main():
                             email['category'] = categorize_email(email['subject'])
                             email['summary'] = summarize_text(email['content'])
                         st.session_state.emails = fetched_emails
-                        save_emails_to_json(fetched_emails)  # Save fetched emails to JSON
                     else:
                         st.error('No emails fetched. Please check your credentials or try again later.')
                 except Exception as e:
