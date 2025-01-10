@@ -89,6 +89,21 @@ def load_emails_from_json(filename=EMAILS_JSON_FILE):
         return []
 
 def categorize_email(subject):
+    # Keyword-based categorization
+    keyword_categories = {
+        'Constituent': ['Write Your Representative', 'Representative', 'Write'],
+        'meeting request': ['meeting', 'schedule', 'project', 'appointment', 'discussion'],
+        'Promotion': ['offer', 'discount', 'promotion', 'deal', 'sale'],
+        'Newsletter': ['newsletter', 'update', 'news', 'subscription']
+    }
+
+    # Check if any keyword matches
+    subject_lower = subject.lower()
+    for category, keywords in keyword_categories.items():
+        if any(keyword.lower() in subject_lower for keyword in keywords):
+            return category
+
+    # If no keyword matches, use the NLP model for classification
     candidate_labels = ['Constituent', 'meeting request', 'Promotion', 'Newsletter', 'Others']
     result = classifier(subject, candidate_labels)
     return result['labels'][0]  # Returns the highest probability category
