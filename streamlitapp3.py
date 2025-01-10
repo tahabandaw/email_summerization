@@ -111,9 +111,9 @@ def main():
     password = st.sidebar.text_input('\U0001F511 Password', type='password')
     fetch_emails_button = st.sidebar.button('\U0001F4E5 Fetch Emails')
 
-    # Load emails from JSON at the start
-    if 'emails' not in st.session_state:
-        st.session_state.emails = load_emails_from_json()
+    # Clear previous session data on each refresh
+    if fetch_emails_button:
+        st.session_state.emails = []  # Clear emails before fetching new ones
 
     if fetch_emails_button:
         if email and password:
@@ -146,12 +146,17 @@ def main():
                     - **Date:** {email['date']}
                     - **Category:** {email.get('category', categorize_email(email['subject']))}
                     - **Summary:** {email.get('summary', 'Not summarized yet.')}
+
                     """, unsafe_allow_html=True)
 
                     # Display full email content inside the expander
                     st.text_area("Full Email Content", email['content'], height=300, disabled=True)
 
                 st.divider()  # For better visual separation
+        
+        # Optionally clear emails after displaying
+        st.session_state.emails = []
+
     else:
         st.write("No emails to display.")
 
