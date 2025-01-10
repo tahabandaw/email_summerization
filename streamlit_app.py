@@ -1,26 +1,26 @@
-import re
-import logging
 import streamlit as st
+import imapclient
 from email import message_from_bytes
 from transformers import pipeline
-import imapclient
-import sys
-import torch
+import logging
 import os
+import json
+
 # Configure logging
-logging.basicConfig(stream=sys.stdout, level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(filename='app.log', level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
-# Disable TensorFlow optimizations and GPU features
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+# Set environment variable to disable oneDNN (for TensorFlow, if using)
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-# Initialize summarizer with a lightweight model
-summarizer = pipeline('summarization', model='sshleifer/distilbart-cnn-12-6', from_pt=True, framework='pt')
+# Lazy loading for the summarization model
+@st.cache_resource
+def load_summarizer():
+    return pipeline('summarization', model='facebook/bart-base')
 
-def is_valid_email(email):
-    """Basic validation for email format."""
-    regex = r'^[^@\s]+@[^@\s]+\.[^@\s]+$'
-    return re.match(regex, email)
+summarizer = load_summarizer()
+
+# File to store emails
+EMAILS_JSON_FILE = 'emails.json'
 
 def fetch_emails(email, password, folder='INBOX', limit=10):
     try:
@@ -57,13 +57,30 @@ def fetch_emails(email, password, folder='INBOX', limit=10):
         logging.error(f"Error fetching emails: {e}")
         return []
 
+def save_emails_to_json(emails, filename=EMAILS_JSON_FILE):
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(emails, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logging.error(f"Error saving emails to JSON: {e}")
+
+def load_emails_from_json(filename=EMAILS_JSON_FILE):
+    try:
+        if os.path.exists(filename):
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        logging.error(f"Error loading emails from JSON: {e}")
+        return []
+
 def categorize_email(subject):
     subject_lower = subject.lower()
     if any(keyword in subject_lower for keyword in ['invoice', 'payment', 'bill']):
         return 'Finance'
     elif any(keyword in subject_lower for keyword in ['meeting', 'schedule', 'project']):
         return 'Work'
-    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion']):
+    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion','logical']):
         return 'Promotions'
     else:
         return 'Others'
@@ -88,22 +105,19 @@ def main():
     password = st.sidebar.text_input('\U0001F511 Password', type='password')
     fetch_emails_button = st.sidebar.button('\U0001F4E5 Fetch Emails')
 
-    # Load emails in session state at the start
+    # Load emails from JSON at the start
     if 'emails' not in st.session_state:
-        st.session_state.emails = []
+        st.session_state.emails = load_emails_from_json()
 
     if fetch_emails_button:
         if email and password:
             with st.spinner('Fetching emails...'):
                 try:
-                    fetched_emails = fetch_emails(email, password)
-                    if fetched_emails:
-                        for email in fetched_emails:
-                            email['category'] = categorize_email(email['subject'])
-                            email['summary'] = summarize_text(email['content'])
-                        st.session_state.emails = fetched_emails
-                    else:
+                    st.session_state.emails = fetch_emails(email, password, limit=5)  # Adjust the limit here
+                    if not st.session_state.emails:
                         st.error('No emails fetched. Please check your credentials or try again later.')
+                    else:
+                        save_emails_to_json(st.session_state.emails)  # Save fetched emails to JSON
                 except Exception as e:
                     st.error(f"An error occurred while fetching emails: {e}")
         else:
@@ -124,8 +138,8 @@ def main():
                     st.markdown(f"""
                     - **From:** {email['from']}
                     - **Date:** {email['date']}
-                    - **Category:** {email['category']}
-                    - **Summary:** {email['summary']}
+                    - **Category:** {email.get('category', categorize_email(email['subject']))}
+                    - **Summary:** {email.get('summary', 'Not summarized yet.')}
                     """, unsafe_allow_html=True)
 
                     # Display full email content inside the expander
