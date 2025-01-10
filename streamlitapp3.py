@@ -111,7 +111,10 @@ def main():
     password = st.sidebar.text_input('\U0001F511 Password', type='password')
     fetch_emails_button = st.sidebar.button('\U0001F4E5 Fetch Emails')
 
-    # Clear previous session data on each refresh
+    # Initialize the session state variable if it doesn't exist
+    if 'emails' not in st.session_state:
+        st.session_state.emails = []
+
     if fetch_emails_button:
         st.session_state.emails = []  # Clear emails before fetching new ones
 
