@@ -1,11 +1,10 @@
-streamlit
-imapclient
-transformers
-torch
+IMAPClient==3.0.1
+transformers==4.47.1
+torch==2.5.1
+torchvision==0.20.1
 tokenizers
 numpy
 pandas
-protobuf
 jinja2
 python-dotenv
 idna
