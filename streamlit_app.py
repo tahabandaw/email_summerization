@@ -1,23 +1,25 @@
+import re
+import os
+import logging
 import streamlit as st
-import imapclient
 from email import message_from_bytes
 from transformers import pipeline
-import logging
-import os
-import json
+import imapclient
 
 # Configure logging
-logging.basicConfig(filename='app.log', level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(stream=sys.stdout, level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
 # Disable TensorFlow optimizations and GPU features
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress unnecessary TensorFlow logs
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU usage entirely
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-# Initialize the summarization pipeline
-summarizer = pipeline('summarization', model='facebook/bart-large-cnn')
+# Initialize summarizer with a lightweight model
+summarizer = pipeline('summarization', model='sshleifer/distilbart-cnn-12-6')
 
-# File to store emails
-EMAILS_JSON_FILE = 'emails.json'
+def is_valid_email(email):
+    """Basic validation for email format."""
+    regex = r'^[^@\s]+@[^@\s]+\.[^@\s]+$'
+    return re.match(regex, email)
 
 def fetch_emails(email, password, folder='INBOX', limit=10):
     try:
