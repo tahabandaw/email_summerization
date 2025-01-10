@@ -26,6 +26,13 @@ def load_summarizer():
 
 summarizer = load_summarizer()
 
+# Lazy loading for the email categorization model
+@st.cache_resource
+def load_classifier():
+    return pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+
+classifier = load_classifier()
+
 # File to store emails
 EMAILS_JSON_FILE = 'emails.json'
 
@@ -82,15 +89,9 @@ def load_emails_from_json(filename=EMAILS_JSON_FILE):
         return []
 
 def categorize_email(subject):
-    subject_lower = subject.lower()
-    if any(keyword in subject_lower for keyword in ['invoice', 'payment', 'bill']):
-        return 'Finance'
-    elif any(keyword in subject_lower for keyword in ['meeting', 'schedule', 'project']):
-        return 'Work'
-    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion','logical']):
-        return 'Promotions'
-    else:
-        return 'Others'
+    candidate_labels = ['Constituent', 'meeting request', 'Promotion', 'Newsletter', 'Others']
+    result = classifier(subject, candidate_labels)
+    return result['labels'][0]  # Returns the highest probability category
 
 def summarize_text(text):
     try:
@@ -111,12 +112,9 @@ def main():
     password = st.sidebar.text_input('\U0001F511 Password', type='password')
     fetch_emails_button = st.sidebar.button('\U0001F4E5 Fetch Emails')
 
-    # Initialize the session state variable if it doesn't exist
+    # Load emails from JSON at the start
     if 'emails' not in st.session_state:
-        st.session_state.emails = []
-
-    if fetch_emails_button:
-        st.session_state.emails = []  # Clear emails before fetching new ones
+        st.session_state.emails = load_emails_from_json()
 
     if fetch_emails_button:
         if email and password:
@@ -134,7 +132,7 @@ def main():
 
     if st.session_state.emails:
         # Email categories
-        categories = ['All', 'Finance', 'Work', 'Promotions', 'Others']
+        categories = ['All', 'Constituent', 'meeting request', 'Newsletter', 'Speakers office', 'Others']
         selected_category = st.radio("Filter Emails", categories, horizontal=True)
 
         filtered_emails = st.session_state.emails if selected_category == 'All' else [
@@ -149,17 +147,12 @@ def main():
                     - **Date:** {email['date']}
                     - **Category:** {email.get('category', categorize_email(email['subject']))}
                     - **Summary:** {email.get('summary', 'Not summarized yet.')}
-
                     """, unsafe_allow_html=True)
 
                     # Display full email content inside the expander
                     st.text_area("Full Email Content", email['content'], height=300, disabled=True)
 
                 st.divider()  # For better visual separation
-        
-        # Optionally clear emails after displaying
-        st.session_state.emails = []
-
     else:
         st.write("No emails to display.")
 
