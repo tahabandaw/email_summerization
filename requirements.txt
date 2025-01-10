@@ -1,33 +1,17 @@
-huggingface-hub==0.24.7
-idna==3.7
-IMAPClient==3.0.1
-importlib_metadata==8.4.0
-importlib_resources==6.4.5
-iniconfig==2.0.0
-ipykernel==6.29.5
-ipython==8.26.0
-itsdangerous==2.2.0
-jax==0.4.37
-jaxlib==0.4.36
-jedi==0.19.1
-Jinja2==3.1.4
-joblib==1.4.2
-jsonschema==4.23.0
-jsonschema-specifications==2024.10.1
-jupyter_client==8.6.2
-jupyter_core==5.7.2
-keras==3.6.0
-Keras-Applications==1.0.8
-Keras-Preprocessing==1.1.2
 streamlit==1.41.1
-sympy==1.13.1
-threadpoolctl==3.5.0
+imapclient==3.0.1
+transformers==4.35.0
+torch==2.4.0+cpu
 tokenizers==0.21.0
-toml==0.10.2
-tomlkit==0.12.0
-streamlit
-torch==2.0.1+cpu
-torchvision==0.15.2+cpu
--f https://download.pytorch.org/whl/cpu/torch_stable.html
-transformers
-imapclient
+numpy>=1.23.0
+pandas>=1.3.0
+protobuf<4.24
+jinja2>=3.1.0
+python-dotenv>=1.0.0
+# For imapclient compatibility
+idna>=3.0
+# Add below for email parsing and JSON compatibility
+email>=6.0
+jsonschema>=4.0
+# Pip Addendum dependencies
+# Mentionable tag catch dependency
