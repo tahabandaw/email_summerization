@@ -1,4 +1,8 @@
 import streamlit as st
+
+# Set the page config as the first command
+st.set_page_config(layout="wide")
+
 import imapclient
 from email import message_from_bytes
 from transformers import pipeline
@@ -97,7 +101,6 @@ def summarize_text(text):
         return "Unable to generate summary."
 
 def main():
-    st.set_page_config(layout="wide")
     st.title('\U0001F4E8 Email Dashboard')
 
     # Sidebar for email and password input with fetch button
@@ -129,25 +132,4 @@ def main():
         selected_category = st.radio("Filter Emails", categories, horizontal=True)
 
         filtered_emails = st.session_state.emails if selected_category == 'All' else [
-            email for email in st.session_state.emails if email.get('category', 'Others') == selected_category]
-
-        for email in filtered_emails:
-            with st.container():
-                # Display email summary with a button to show full content
-                with st.expander(f"\U0001F4E7 Subject: {email['subject']}", expanded=False):
-                    st.markdown(f"""
-                    - **From:** {email['from']}
-                    - **Date:** {email['date']}
-                    - **Category:** {email.get('category', categorize_email(email['subject']))}
-                    - **Summary:** {email.get('summary', 'Not summarized yet.')}
-                    """, unsafe_allow_html=True)
-
-                    # Display full email content inside the expander
-                    st.text_area("Full Email Content", email['content'], height=300, disabled=True)
-
-                st.divider()  # For better visual separation
-    else:
-        st.write("No emails to display.")
-
-if __name__ == '__main__':
-    main()
+            email for email in st.session_state.emails if email
