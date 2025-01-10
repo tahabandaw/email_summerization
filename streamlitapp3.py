@@ -58,18 +58,23 @@ def fetch_emails(email, password, folder='INBOX', limit=10):
                     content = 'No text content found'
             else:
                 content = msg.get_payload(decode=True).decode('utf-8', 'ignore') if msg.get_payload(decode=True) else 'No content found'
-            emails.append({
+            email_data = {
                 'id': uid,
                 'subject': msg.get('Subject', 'No Subject'),
                 'from': msg.get('From', 'Unknown'),
                 'content': content,
                 'date': msg.get('Date', 'Unknown'),
-            })
+                'category': categorize_email(msg.get('Subject', 'No Subject')),  # Assign category here
+                'summary': summarize_text(content),  # Optional: Summarize the email content
+            }
+            emails.append(email_data)
         imap.logout()
         return emails
     except Exception as e:
         logging.error(f"Error fetching emails: {e}")
         return []
+
+
 
 def save_emails_to_json(emails, filename=EMAILS_JSON_FILE):
     try:
@@ -145,31 +150,37 @@ def main():
         else:
             st.warning('Please enter your email and password to fetch emails.')
 
-    if st.session_state.emails:
-        # Email categories
-        categories = ['All', 'Constituent', 'meeting request', 'Newsletter', 'Speakers office', 'Others']
-        selected_category = st.radio("Filter Emails", categories, horizontal=True)
+ if st.session_state.emails:
+    # Ensure categories are assigned
+    for email in st.session_state.emails:
+        if 'category' not in email:
+            email['category'] = categorize_email(email['subject'])  # Make sure category is assigned
 
-        filtered_emails = st.session_state.emails if selected_category == 'All' else [
-            email for email in st.session_state.emails if email.get('category', 'Others') == selected_category]
+    # Email categories
+    categories = ['All', 'Constituent', 'meeting request', 'Newsletter', 'Speakers office', 'Others']
+    selected_category = st.radio("Filter Emails", categories, horizontal=True)
 
-        for email in filtered_emails:
-            with st.container():
-                # Display email summary with a button to show full content
-                with st.expander(f"\U0001F4E7 Subject: {email['subject']}", expanded=False):
-                    st.markdown(f"""
-                    - **From:** {email['from']}
-                    - **Date:** {email['date']}
-                    - **Category:** {email.get('category', categorize_email(email['subject']))}
-                    - **Summary:** {email.get('summary', 'Not summarized yet.')}
-                    """, unsafe_allow_html=True)
+    filtered_emails = st.session_state.emails if selected_category == 'All' else [
+        email for email in st.session_state.emails if email.get('category', 'Others') == selected_category]
 
-                    # Display full email content inside the expander
-                    st.text_area("Full Email Content", email['content'], height=300, disabled=True)
+    for email in filtered_emails:
+        with st.container():
+            # Display email summary with a button to show full content
+            with st.expander(f"\U0001F4E7 Subject: {email['subject']}", expanded=False):
+                st.markdown(f"""
+                - **From:** {email['from']}
+                - **Date:** {email['date']}
+                - **Category:** {email.get('category', 'Others')}
+                - **Summary:** {email.get('summary', 'Not summarized yet.')}
+                """, unsafe_allow_html=True)
 
-                st.divider()  # For better visual separation
-    else:
-        st.write("No emails to display.")
+                # Display full email content inside the expander
+                st.text_area("Full Email Content", email['content'], height=300, disabled=True)
+
+            st.divider()  # For better visual separation
+else:
+    st.write("No emails to display.")
+
 
 if __name__ == '__main__':
     main()
