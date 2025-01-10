@@ -6,7 +6,7 @@ from transformers import pipeline
 import imapclient
 import sys
 import torch
-
+import os
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
