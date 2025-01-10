@@ -10,7 +10,7 @@ import json
 logging.basicConfig(filename='app.log', level=logging.ERROR, format='%(asctime)s %(levelname)s %(message)s')
 
 # Set environment variable to disable oneDNN
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '-1'
 
 # Initialize the summarization pipeline
 summarizer = pipeline('summarization', model='facebook/bart-large-cnn')
