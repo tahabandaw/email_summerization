@@ -4,7 +4,7 @@ import streamlit as st
 st.set_page_config(layout="wide")
 
 # Clear the cache each time the app is refreshed
-st.caching.clear_cache()
+st.cache_data.clear()
 
 import imapclient
 from email import message_from_bytes
@@ -95,17 +95,4 @@ def categorize_email(subject):
 def summarize_text(text):
     try:
         if len(text.split()) < 10:
-            return text  # return the text as is if it's too short
-        max_len = min(130, len(text.split()) * 2)
-        summary = summarizer(text, max_length=max_len, min_length=30, do_sample=False)
-        return summary[0]['summary_text']
-    except Exception as e:
-        logging.error(f"Error summarizing text: {e}")
-        return "Unable to generate summary."
-
-def main():
-    st.title('\U0001F4E8 Email Dashboard')
-
-    # Sidebar for email and password input with fetch button
-    email = st.sidebar.text_input('\U0001F4E8 Email')
-    password = st.sidebar.te
+            return text  # return the text as is
