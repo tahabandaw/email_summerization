@@ -8,10 +8,7 @@ pandas>=1.3.0
 protobuf<4.24
 jinja2>=3.1.0
 python-dotenv>=1.0.0
-# For imapclient compatibility
 idna>=3.0
-# Add below for email parsing and JSON compatibility
 email>=6.0
 jsonschema>=4.0
-# Pip Addendum dependencies
-# Mentionable tag catch dependency
+
