@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # Initialize summarizer with a lightweight model
-summarizer = pipeline('summarization', model='sshleifer/distilbart-cnn-12-6')
+summarizer = pipeline('summarization', model='sshleifer/distilbart-cnn-12-6', from_pt=True)
 
 def is_valid_email(email):
     """Basic validation for email format."""
