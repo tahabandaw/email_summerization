@@ -26,13 +26,6 @@ def load_summarizer():
 
 summarizer = load_summarizer()
 
-# Lazy loading for the email categorization model
-@st.cache_resource
-def load_classifier():
-    return pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-
-classifier = load_classifier()
-
 # File to store emails
 EMAILS_JSON_FILE = 'emails.json'
 
@@ -74,8 +67,6 @@ def fetch_emails(email, password, folder='INBOX', limit=10):
         logging.error(f"Error fetching emails: {e}")
         return []
 
-
-
 def save_emails_to_json(emails, filename=EMAILS_JSON_FILE):
     try:
         with open(filename, 'w', encoding='utf-8') as f:
@@ -94,24 +85,15 @@ def load_emails_from_json(filename=EMAILS_JSON_FILE):
         return []
 
 def categorize_email(subject):
-    # Keyword-based categorization
-    keyword_categories = {
-        'Constituent': ['Write Your Representative', 'Representative', 'Write'],
-        'meeting request': ['meeting', 'schedule', 'project', 'appointment', 'discussion'],
-        'Promotion': ['offer', 'discount', 'promotion', 'deal', 'sale'],
-        'Newsletter': ['newsletter', 'update', 'news', 'subscription']
-    }
-
-    # Check if any keyword matches
     subject_lower = subject.lower()
-    for category, keywords in keyword_categories.items():
-        if any(keyword.lower() in subject_lower for keyword in keywords):
-            return category
-
-    # If no keyword matches, use the NLP model for classification
-    candidate_labels = ['Constituent', 'meeting request', 'Promotion', 'Newsletter', 'Others']
-    result = classifier(subject, candidate_labels)
-    return result['labels'][0]  # Returns the highest probability category
+    if any(keyword in subject_lower for keyword in ['write your representative', 'representative', 'write']):
+        return 'Constituent'
+    elif any(keyword in subject_lower for keyword in ['meeting', 'schedule', 'project']):
+        return 'meeting request'
+    elif any(keyword in subject_lower for keyword in ['offer', 'discount', 'promotion', 'logical']):
+        return 'Promotions'
+    else:
+        return 'Others'
 
 def summarize_text(text):
     try:
@@ -150,37 +132,40 @@ def main():
         else:
             st.warning('Please enter your email and password to fetch emails.')
 
- if st.session_state.emails:
-    # Ensure categories are assigned
-    for email in st.session_state.emails:
-        if 'category' not in email:
-            email['category'] = categorize_email(email['subject'])  # Make sure category is assigned
+    if st.session_state.emails:
+        # Ensure categories are assigned
+        for email in st.session_state.emails:
+            if 'category' not in email:
+                email['category'] = categorize_email(email['subject'])  # Make sure category is assigned
 
-    # Email categories
-    categories = ['All', 'Constituent', 'meeting request', 'Newsletter', 'Speakers office', 'Others']
-    selected_category = st.radio("Filter Emails", categories, horizontal=True)
+        # Email categories
+        categories = ['All', 'Constituent', 'meeting request', 'Newsletter', 'Speakers office', 'Others']
+        selected_category = st.radio("Filter Emails", categories, horizontal=True)
 
-    filtered_emails = st.session_state.emails if selected_category == 'All' else [
-        email for email in st.session_state.emails if email.get('category', 'Others') == selected_category]
+        # Filter emails based on selected category
+        filtered_emails = st.session_state.emails if selected_category == 'All' else [
+            email for email in st.session_state.emails if email.get('category', 'Others') == selected_category]
 
-    for email in filtered_emails:
-        with st.container():
-            # Display email summary with a button to show full content
-            with st.expander(f"\U0001F4E7 Subject: {email['subject']}", expanded=False):
-                st.markdown(f"""
-                - **From:** {email['from']}
-                - **Date:** {email['date']}
-                - **Category:** {email.get('category', 'Others')}
-                - **Summary:** {email.get('summary', 'Not summarized yet.')}
-                """, unsafe_allow_html=True)
+        # Reverse the order of emails
+        filtered_emails = list(reversed(filtered_emails))
 
-                # Display full email content inside the expander
-                st.text_area("Full Email Content", email['content'], height=300, disabled=True)
+        for email in filtered_emails:
+            with st.container():
+                # Display email summary with a button to show full content
+                with st.expander(f"\U0001F4E7 Subject: {email['subject']}", expanded=False):
+                    st.markdown(f"""
+                    - **From:** {email['from']}
+                    - **Date:** {email['date']}
+                    - **Category:** {email.get('category', 'Others')}
+                    - **Summary:** {email.get('summary', 'Not summarized yet.')}
+                    """, unsafe_allow_html=True)
 
-            st.divider()  # For better visual separation
-else:
-    st.write("No emails to display.")
+                    # Display full email content inside the expander
+                    st.text_area("Full Email Content", email['content'], height=300, disabled=True)
 
+                st.divider()  # For better visual separation
+    else:
+        st.write("No emails to display.")
 
 if __name__ == '__main__':
     main()
