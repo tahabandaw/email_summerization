@@ -8,3 +8,9 @@ pandas
 jinja2
 python-dotenv
 idna
+tensorflow
+datasets
+accelerate
+tqdm
+scipy
+
